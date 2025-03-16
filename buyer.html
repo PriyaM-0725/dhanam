@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dhanam - Food Delivery</title>
+    <script
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBcU14_EJ1MaxgQhC35A-ptE4-sCQ1QgMA&callback=initMap"
+      async
+      defer
+    ></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        background: #ffebcc;
+        margin: 0;
+        padding: 0;
+      }
+      .container {
+        max-width: 800px;
+        margin: 20px auto;
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 2px 2px 15px rgba(0, 0, 0, 0.2);
+      }
+      h2 {
+        color: #e67e22;
+      }
+      input,
+      select,
+      button {
+        width: 100%;
+        padding: 12px;
+        margin: 10px 0;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 16px;
+      }
+      button {
+        background: #e67e22;
+        color: white;
+        border: none;
+        cursor: pointer;
+        transition: 0.3s;
+      }
+      button:hover {
+        background: #d35400;
+      }
+      .hidden {
+        display: none;
+      }
+      #map {
+        width: 100%;
+        height: 500px;
+        margin-top: 10px;
+        border-radius: 10px;
+      }
+      .popup {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 2px 2px 15px rgba(0, 0, 0, 0.2);
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Welcome to Dhanam</h2>
+      <p>Delivering food to those who need it ❤️</p>
+      <button onclick="nextPage('detailsPage')">Get Started</button>
+    </div>
+
+    <div id="detailsPage" class="container hidden">
+      <h2>Enter Your Details</h2>
+      <input type="text" id="name" placeholder="Name" required />
+      <input type="text" id="address" placeholder="Address" required />
+      <input type="text" id="phone" placeholder="Phone Number" required />
+      <select id="role">
+        <option value="">Select Role</option>
+        <option value="donor">Donor</option>
+        <option value="buyer">Buyer</option>
+      </select>
+      <button onclick="submitDetails()">Next</button>
+    </div>
+
+    <div id="donorPage" class="container hidden">
+      <h2>Food Donation Details</h2>
+      <input type="text" id="foodType" placeholder="Type of Food" required />
+      <input
+        type="number"
+        id="foodQuantity"
+        placeholder="Quantity (in kg)"
+        required
+      />
+      <button onclick="nextPage('mapPage'); initMap('donor')">
+        Find Buyers
+      </button>
+    </div>
+
+    <div id="mapPage" class="container hidden">
+      <h2>Location Tracking</h2>
+      <div id="map"></div>
+    </div>
+
+    <div id="popup" class="popup">
+      <h2>Request Accepted!</h2>
+      <p>Your request has been accepted successfully.</p>
+      <button onclick="closePopup()">OK</button>
+    </div>
+
+    <script>
+      function nextPage(pageId) {
+        document
+          .querySelectorAll(".container")
+          .forEach((div) => div.classList.add("hidden"));
+        document.getElementById(pageId).classList.remove("hidden");
+      }
+
+      function submitDetails() {
+        let role = document.getElementById("role").value;
+        if (!role) {
+          alert("Please select a role.");
+          return;
+        }
+        if (role === "buyer") {
+          let quantity = prompt("Enter the quantity of food required (in kg):");
+          if (!quantity || isNaN(quantity) || quantity <= 0) {
+            alert("Please enter a valid quantity.");
+            return;
+          }
+          localStorage.setItem("foodQuantity", quantity);
+          alert("Welcome Buyer! Please wait while we find food donors.");
+          nextPage("mapPage");
+          initMap("buyer");
+        } else {
+          nextPage("donorPage");
+        }
+      }
+
+      function initMap(userType) {
+        let mapOptions = {
+          zoom: 12,
+          center: { lat: 13.05, lng: 80.25 }, // Default center
+        };
+
+        let map = new google.maps.Map(
+          document.getElementById("map"),
+          mapOptions
+        );
+
+        if (userType === "buyer") {
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition((position) => {
+              let buyerLocation = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+              };
+
+              map.setCenter(buyerLocation);
+
+              new google.maps.Marker({
+                position: buyerLocation,
+                map: map,
+                title: `Your Location (Food Needed: ${localStorage.getItem(
+                  "foodQuantity"
+                )} kg)`,
+                icon: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png",
+              });
+            });
+          } else {
+            alert("Geolocation is not supported by this browser.");
+          }
+        } else if (userType === "donor") {
+          let orphanages = [
+            { name: "Sneha Orphanage", lat: 13.0827, lng: 80.2707 },
+            { name: "Hope Children's Home", lat: 13.0105, lng: 80.2207 },
+            { name: "Anbu Illam", lat: 12.9716, lng: 80.2906 },
+            { name: "Mitra Orphanage", lat: 13.0501, lng: 80.2484 },
+            { name: "New Life Home", lat: 13.0704, lng: 80.2601 },
+          ];
+
+          orphanages.forEach((place) => {
+            let marker = new google.maps.Marker({
+              position: { lat: place.lat, lng: place.lng },
+              map: map,
+              animation: google.maps.Animation.BOUNCE,
+            });
+
+            let infoWindow = new google.maps.InfoWindow({
+              content: `<strong>${place.name}</strong><br>
+                📍 Location: (${place.lat}, ${place.lng})<br>
+                <button onclick="acceptRequest()">✔️ Accept</button>
+                <button onclick="closeInfo()">❌ Reject</button>`,
+            });
+
+            marker.addListener("click", () => {
+              infoWindow.open(map, marker);
+            });
+          });
+        }
+      }
+
+      function acceptRequest() {
+        setTimeout(() => {
+          document.getElementById("popup").style.display = "block";
+        }, 5000);
+      }
+
+      function closePopup() {
+        document.getElementById("popup").style.display = "none";
+      }
+
+      function closeInfo() {
+        document.querySelector(".gm-style-iw").parentElement.style.display =
+          "none";
+      }
+    </script>
+  </body>
+</html>
